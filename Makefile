@@ -4,7 +4,9 @@ PREFIX ?= /usr/local/bin
 .PHONY: build install uninstall clean
 
 build:
-	swiftc -O -o $(BINARY) main.swift -framework Cocoa
+	clang -O2 -o $(BINARY) main.c \
+		-framework ApplicationServices \
+		-framework CoreFoundation
 
 install: build
 	install -m 755 $(BINARY) $(PREFIX)/$(BINARY)
