@@ -1,0 +1,47 @@
+name: Update Homebrew tap
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  update-tap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute SHA256
+        id: sha
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          URL="https://github.com/${REPO}/archive/refs/tags/${TAG}.tar.gz"
+          SHA=$(curl -sL "$URL" | shasum -a 256 | awk '{print $1}')
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Check out homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: derryleng/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Update formula
+        env:
+          TAG: ${{ steps.sha.outputs.tag }}
+          URL: ${{ steps.sha.outputs.url }}
+          SHA: ${{ steps.sha.outputs.sha256 }}
+        run: |
+          sed -i "s|url \".*\"|url \"$URL\"|" Formula/menubar-guard.rb
+          sed -i "s|sha256 \".*\"|sha256 \"$SHA\"|" Formula/menubar-guard.rb
+
+      - name: Commit and push
+        env:
+          TAG: ${{ steps.sha.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/menubar-guard.rb
+          git commit -m "Bump menubar-guard to $TAG"
+          git push
